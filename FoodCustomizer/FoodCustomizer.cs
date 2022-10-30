@@ -17,7 +17,7 @@ namespace FoodCustomizer;
 public class FoodCustomizer : BaseUnityPlugin
 {
 	private const string ModName = "FoodCustomizer";
-	private const string ModVersion = "1.0.0";
+	private const string ModVersion = "1.0.1";
 	private const string ModGUID = "org.bepinex.plugins.foodcustomizer";
 
 	private static FoodCustomizer mod = null!;
