@@ -17,7 +17,7 @@ namespace FoodCustomizer;
 public class FoodCustomizer : BaseUnityPlugin
 {
 	private const string ModName = "FoodCustomizer";
-	private const string ModVersion = "1.0.1";
+	private const string ModVersion = "1.0.2";
 	private const string ModGUID = "org.bepinex.plugins.foodcustomizer";
 
 	private static FoodCustomizer mod = null!;
@@ -105,11 +105,13 @@ public class FoodCustomizer : BaseUnityPlugin
 						duration = config(name, "Duration", (int)food.m_foodBurnTime, new ConfigDescription($"Duration for {localizedName} in seconds.", null, attributes)),
 						decayStart = config(name, "Decay Start Time", 0, new ConfigDescription($"Time after which the health and stamina from eating {localizedName} start to drain in seconds.", null, attributes)),
 						decayValue = config(name, "Decay Value", 100, new ConfigDescription($"Percentage of the health and stamina you lose during the decay of {localizedName}.", new AcceptableValueRange<int>(0, 100), attributes)),
+						eitr = config(name, "Eitr", food.m_foodEitr, new ConfigDescription($"Eitr gained from eating {localizedName}.", null, attributes))
 					});
 					foodConfigs[food.m_name].health.SettingChanged += UpdateFood;
 					foodConfigs[food.m_name].stamina.SettingChanged += UpdateFood;
 					foodConfigs[food.m_name].healthRegen.SettingChanged += UpdateFood;
 					foodConfigs[food.m_name].duration.SettingChanged += UpdateFood;
+					foodConfigs[food.m_name].eitr.SettingChanged += UpdateFood;
 				}
 
 				UpdateFoodValues(food);
@@ -141,6 +143,7 @@ public class FoodCustomizer : BaseUnityPlugin
 		public ConfigEntry<int> duration = null!;
 		public ConfigEntry<int> decayStart = null!;
 		public ConfigEntry<int> decayValue = null!;
+		public ConfigEntry<float> eitr = null!;
 		public ConfigEntry<string>? recipe;
 	}
 
@@ -176,11 +179,13 @@ public class FoodCustomizer : BaseUnityPlugin
 				m_foodStamina = food.m_foodStamina,
 				m_foodRegen = food.m_foodRegen,
 				m_foodBurnTime = food.m_foodBurnTime,
+				m_foodEitr = food.m_foodEitr
 			};
-			food.m_food = food.m_food / original.m_food * config.health.Value;
-			food.m_foodStamina = food.m_foodStamina / original.m_foodStamina * config.stamina.Value;
-			food.m_foodRegen = food.m_foodRegen / original.m_foodRegen * config.healthRegen.Value;
-			food.m_foodBurnTime = food.m_foodBurnTime / original.m_foodBurnTime * config.duration.Value;
+			food.m_food = food.m_food == 0 || original.m_food == 0 ? config.health.Value : food.m_food / original.m_food * config.health.Value;
+			food.m_foodStamina = food.m_foodStamina == 0 || original.m_foodStamina == 0 ? config.stamina.Value : food.m_foodStamina / original.m_foodStamina * config.stamina.Value;
+			food.m_foodRegen = food.m_foodRegen == 0 || original.m_foodRegen == 0 ? config.healthRegen.Value : food.m_foodRegen / original.m_foodRegen * config.healthRegen.Value;
+			food.m_foodBurnTime = food.m_foodBurnTime == 0 || original.m_foodBurnTime == 0 ? config.duration.Value : food.m_foodBurnTime / original.m_foodBurnTime * config.duration.Value;
+			food.m_foodEitr = food.m_foodEitr == 0 || original.m_foodEitr == 0 ? config.eitr.Value : food.m_foodEitr / original.m_foodEitr * config.eitr.Value;
 		}
 	}
 
