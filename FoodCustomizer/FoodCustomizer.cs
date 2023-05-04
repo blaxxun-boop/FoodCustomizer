@@ -14,10 +14,11 @@ using UnityEngine;
 namespace FoodCustomizer;
 
 [BepInPlugin(ModGUID, ModName, ModVersion)]
+[BepInIncompatibility("org.bepinex.plugins.valheim_plus")]
 public class FoodCustomizer : BaseUnityPlugin
 {
 	private const string ModName = "FoodCustomizer";
-	private const string ModVersion = "1.0.2";
+	private const string ModVersion = "1.0.3";
 	private const string ModGUID = "org.bepinex.plugins.foodcustomizer";
 
 	private static FoodCustomizer mod = null!;
@@ -28,6 +29,7 @@ public class FoodCustomizer : BaseUnityPlugin
 
 	private static ConfigEntry<Toggle> serverConfigLocked = null!;
 	private static ConfigEntry<Toggle> foodDecay = null!;
+	private static ConfigEntry<float> foodDurationMultiplier = null!;
 
 	private static ConfigEntry<T> config<T>(string group, string name, T value, ConfigDescription description, bool synchronizedSetting = true)
 	{
@@ -62,13 +64,15 @@ public class FoodCustomizer : BaseUnityPlugin
 		serverConfigLocked = config("1 - General", "Lock Configuration", Toggle.On, "If on, the configuration is locked and can be changed by server admins only.");
 		configSync.AddLockingConfigEntry(serverConfigLocked);
 		foodDecay = config("1 - General", "Food Decay", Toggle.On, "Can be used to disable all food decay.");
+		foodDurationMultiplier = config("1 - General", "Food Duration Multiplier", 1f, new ConfigDescription("Applies a multiplier to the duration of all foods.", new AcceptableValueRange<float>(0.1f, 10f)));
+		foodDurationMultiplier.SettingChanged += UpdateFood;
 
 		Assembly assembly = Assembly.GetExecutingAssembly();
 		Harmony harmony = new(ModGUID);
 		harmony.PatchAll(assembly);
 	}
 
-	private static bool isFood(ItemDrop.ItemData.SharedData item) => item.m_itemType == ItemDrop.ItemData.ItemType.Consumable && item.m_foodStamina > 0;
+	private static bool isFood(ItemDrop.ItemData.SharedData item) => item is { m_itemType: ItemDrop.ItemData.ItemType.Consumable, m_foodStamina: > 0 };
 	private static IEnumerable<ItemDrop.ItemData.SharedData> foodItems() => ObjectDB.instance.m_items.Select(i => i.GetComponent<ItemDrop>().m_itemData.m_shared).Where(isFood);
 
 	[HarmonyPatch]
@@ -184,7 +188,7 @@ public class FoodCustomizer : BaseUnityPlugin
 			food.m_food = food.m_food == 0 || original.m_food == 0 ? config.health.Value : food.m_food / original.m_food * config.health.Value;
 			food.m_foodStamina = food.m_foodStamina == 0 || original.m_foodStamina == 0 ? config.stamina.Value : food.m_foodStamina / original.m_foodStamina * config.stamina.Value;
 			food.m_foodRegen = food.m_foodRegen == 0 || original.m_foodRegen == 0 ? config.healthRegen.Value : food.m_foodRegen / original.m_foodRegen * config.healthRegen.Value;
-			food.m_foodBurnTime = food.m_foodBurnTime == 0 || original.m_foodBurnTime == 0 ? config.duration.Value : food.m_foodBurnTime / original.m_foodBurnTime * config.duration.Value;
+			food.m_foodBurnTime = (food.m_foodBurnTime == 0 || original.m_foodBurnTime == 0 ? config.duration.Value : food.m_foodBurnTime / original.m_foodBurnTime * config.duration.Value) * foodDurationMultiplier.Value;
 			food.m_foodEitr = food.m_foodEitr == 0 || original.m_foodEitr == 0 ? config.eitr.Value : food.m_foodEitr / original.m_foodEitr * config.eitr.Value;
 		}
 	}
