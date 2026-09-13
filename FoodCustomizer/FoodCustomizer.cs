@@ -18,7 +18,7 @@ namespace FoodCustomizer;
 public class FoodCustomizer : BaseUnityPlugin
 {
 	private const string ModName = "FoodCustomizer";
-	private const string ModVersion = "1.0.3";
+	private const string ModVersion = "1.0.5";
 	private const string ModGUID = "org.bepinex.plugins.foodcustomizer";
 
 	private static FoodCustomizer mod = null!;
@@ -46,7 +46,7 @@ public class FoodCustomizer : BaseUnityPlugin
 	private enum Toggle
 	{
 		On = 1,
-		Off = 0
+		Off = 0,
 	}
 
 	[PublicAPI]
@@ -73,7 +73,7 @@ public class FoodCustomizer : BaseUnityPlugin
 	}
 
 	private static bool isFood(ItemDrop.ItemData.SharedData item) => item is { m_itemType: ItemDrop.ItemData.ItemType.Consumable, m_foodStamina: > 0 };
-	private static IEnumerable<ItemDrop.ItemData.SharedData> foodItems() => ObjectDB.instance.m_items.Select(i => i.GetComponent<ItemDrop>().m_itemData.m_shared).Where(isFood);
+	private static IEnumerable<ItemDrop.ItemData.SharedData> foodItems() => ObjectDB.instance.m_items.Where(i => i.GetComponent<ItemDrop>()).Select(i => i.GetComponent<ItemDrop>().m_itemData.m_shared).Where(isFood);
 
 	[HarmonyPatch]
 	private class ReadFoodConfigs
@@ -81,7 +81,7 @@ public class FoodCustomizer : BaseUnityPlugin
 		private static IEnumerable<MethodInfo> TargetMethods() => new[]
 		{
 			AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.Awake)),
-			AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB))
+			AccessTools.DeclaredMethod(typeof(ObjectDB), nameof(ObjectDB.CopyOtherDB)),
 		};
 
 		[HarmonyPriority(Priority.Last)]
@@ -109,7 +109,7 @@ public class FoodCustomizer : BaseUnityPlugin
 						duration = config(name, "Duration", (int)food.m_foodBurnTime, new ConfigDescription($"Duration for {localizedName} in seconds.", null, attributes)),
 						decayStart = config(name, "Decay Start Time", 0, new ConfigDescription($"Time after which the health and stamina from eating {localizedName} start to drain in seconds.", null, attributes)),
 						decayValue = config(name, "Decay Value", 100, new ConfigDescription($"Percentage of the health and stamina you lose during the decay of {localizedName}.", new AcceptableValueRange<int>(0, 100), attributes)),
-						eitr = config(name, "Eitr", food.m_foodEitr, new ConfigDescription($"Eitr gained from eating {localizedName}.", null, attributes))
+						eitr = config(name, "Eitr", food.m_foodEitr, new ConfigDescription($"Eitr gained from eating {localizedName}.", null, attributes)),
 					});
 					foodConfigs[food.m_name].health.SettingChanged += UpdateFood;
 					foodConfigs[food.m_name].stamina.SettingChanged += UpdateFood;
@@ -156,7 +156,7 @@ public class FoodCustomizer : BaseUnityPlugin
 
 	private static void UpdateFood(object sender, EventArgs e)
 	{
-		Inventory[] inventories = Player.m_players.Select(p => p.GetInventory()).Concat(FindObjectsOfType<Container>().Select(c => c.GetInventory())).ToArray();
+		Inventory[] inventories = Player.s_players.Select(p => p.GetInventory()).Concat(FindObjectsOfType<Container>().Select(c => c.GetInventory())).ToArray();
 
 		Dictionary<string, ItemDrop.ItemData.SharedData> oldData = new();
 		foreach (ItemDrop.ItemData.SharedData food in foodItems())
@@ -165,7 +165,7 @@ public class FoodCustomizer : BaseUnityPlugin
 			UpdateFoodValues(food);
 		}
 
-		foreach (ItemDrop.ItemData itemdata in ItemDrop.m_instances.Select(i => i.m_itemData).Concat(inventories.SelectMany(i => i.GetAllItems())))
+		foreach (ItemDrop.ItemData itemdata in ItemDrop.s_instances.Select(i => i.m_itemData).Concat(inventories.SelectMany(i => i.GetAllItems())))
 		{
 			UpdateFoodValues(itemdata.m_shared, oldData);
 		}
@@ -183,7 +183,7 @@ public class FoodCustomizer : BaseUnityPlugin
 				m_foodStamina = food.m_foodStamina,
 				m_foodRegen = food.m_foodRegen,
 				m_foodBurnTime = food.m_foodBurnTime,
-				m_foodEitr = food.m_foodEitr
+				m_foodEitr = food.m_foodEitr,
 			};
 			food.m_food = food.m_food == 0 || original.m_food == 0 ? config.health.Value : food.m_food / original.m_food * config.health.Value;
 			food.m_foodStamina = food.m_foodStamina == 0 || original.m_foodStamina == 0 ? config.stamina.Value : food.m_foodStamina / original.m_foodStamina * config.stamina.Value;
